@@ -39,7 +39,6 @@ def pose_similar(kf_landmarks, video):
       image.flags.writeable = False
       results = pose.process(image)
 
-
       if results.pose_landmarks:
         for idx, landmark in enumerate(results.pose_landmarks.landmark):
           # print(idx, landmark)
@@ -49,19 +48,19 @@ def pose_similar(kf_landmarks, video):
           mark[idx][3] = landmark.visibility
 
         d = geo_distance(mark, kf_landmarks[i])
-        print('geo_distance:', d)
+        # print('geo_distance:', d)
         if d < 1:
           print('keyframe {i} matched'.format(i=i))
           i += 1
 
-      # # Draw the pose annotation on the image.
-      # image.flags.writeable = True
-      # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-      # mp_drawing.draw_landmarks(
-      #     image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-      # cv2.imshow('MediaPipe Pose', image)
-      # if cv2.waitKey(5) & 0xFF == 27:
-      #   break
+          # Draw the pose annotation on the image.
+          image.flags.writeable = True
+          image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+          mp_drawing.draw_landmarks(
+              image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+          cv2.imshow('MediaPipe Pose', image)
+          if cv2.waitKey(5) & 0xFF == 27:
+            break
       
   cap.release()
 
