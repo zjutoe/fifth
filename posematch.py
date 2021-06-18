@@ -21,7 +21,7 @@ mp_pose = mp.solutions.pose
 
 def geo_distance(mark1, mark2):
     t = np.sqrt(((mark1 - mark2)**2).sum())
-    D('geo_distance: %s - %s', str(mark1), str(mark2))
+    # D('geo_distance: %s - %s', str(mark1), str(mark2))
     return t
 
 
@@ -40,7 +40,8 @@ def anno_image_show(results, image):
 
 def landmark_normalize(len_shin, landmarks):    
     mk = landmarks
-    
+    # return mk                   # debug
+
     # make the nose as the coordinate center
     nose = mk[0]
     x, y, z = nose[0], nose[1], nose[2]
@@ -57,7 +58,7 @@ def landmark_normalize(len_shin, landmarks):
 
 
 
-def pose_similar(kf_landmarks, video):
+def pose_similar(kf_landmarks, video, geo_dist):
     # normalize the keyframes
     std_kf = kf_landmarks[0]
     len_shin = np.sqrt(np.sum((std_kf[27] - std_kf[25])**2))
@@ -102,7 +103,7 @@ def pose_similar(kf_landmarks, video):
 
                 d = geo_distance(mark, kf_landmarks[i])
                 D('geo_distance: %f', d)
-                if d < 1.09:
+                if d < geo_dist:
                     I('keyframe %d matched', i)
                     i += 1
                     if i >= len(kf_landmarks):
@@ -161,8 +162,9 @@ def load_keyframe_landmarks(keyframes):
 @execute.command()
 @click.option('-k', '--keyframes', required=True, help='dir containing the keyframes')
 @click.option('-i', '--video-input', default=None, help='input video')
+@click.option('-g', '--geo-dist', default=1.1, help='geometry distance')
 @click.option('--debug', default=False, type=bool, help='debug')
-def kf(keyframes, video_input, debug):
+def kf(keyframes, video_input, geo_dist, debug):
     if debug:
         DebugOn()
 
@@ -172,7 +174,7 @@ def kf(keyframes, video_input, debug):
         mkf = load_keyframe_landmarks(kfs)
 
         # cap = cv2.VideoCapture(video_input)
-        pose_similar(mkf, video_input)
+        pose_similar(mkf, video_input, geo_dist)
 
 
 if __name__ == '__main__':
