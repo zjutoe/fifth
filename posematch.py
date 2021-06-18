@@ -15,12 +15,13 @@ def execute():
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
 
-mark1 = np.array(1000 * 33 * 4)
-mark2 = np.array(1000 * 33 * 4)
+# mark1 = np.array(1000 * 33 * 4)
+# mark2 = np.array(1000 * 33 * 4)
 
 
 def geo_distance(mark1, mark2):
     t = np.sqrt(((mark1 - mark2)**2).sum())
+    D('geo_distance: %s - %s', str(mark1), str(mark2))
     return t
 
 
@@ -37,7 +38,32 @@ def anno_image_show(results, image):
     return True
 
 
+def landmark_normalize(len_shin, landmarks):    
+    mk = landmarks
+    
+    # make the nose as the coordinate center
+    nose = mk[0]
+    x, y, z = nose[0], nose[1], nose[2]
+    mk[:, 0] -= x
+    mk[:, 1] -= y
+    mk[:, 2] -= z
+
+    # scale size
+    slen = np.sqrt(np.sum((mk[27] - mk[25])**2))
+    scale = len_shin / slen
+    mk *= scale
+
+    return mk
+
+
+
 def pose_similar(kf_landmarks, video):
+    # normalize the keyframes
+    std_kf = kf_landmarks[0]
+    len_shin = np.sqrt(np.sum((std_kf[27] - std_kf[25])**2))
+    for kf in kf_landmarks:
+        landmark_normalize(len_shin, kf)
+
     # For video file input
     cap = cv2.VideoCapture(video)
 
@@ -56,6 +82,7 @@ def pose_similar(kf_landmarks, video):
             # Flip the image horizontally for a later selfie-view display, and convert
             # the BGR image to RGB.
             # image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
+
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             # To improve performance, optionally mark the image as not writeable to
             # pass by reference.
@@ -70,6 +97,8 @@ def pose_similar(kf_landmarks, video):
                     mark[idx][1] = landmark.y
                     mark[idx][2] = landmark.z
                     mark[idx][3] = landmark.visibility
+
+                landmark_normalize(len_shin, mark)
 
                 d = geo_distance(mark, kf_landmarks[i])
                 D('geo_distance: %f', d)
@@ -142,8 +171,8 @@ def kf(keyframes, video_input, debug):
         # print(kfs)
         mkf = load_keyframe_landmarks(kfs)
 
-    cap = cv2.VideoCapture(video_input)
-    pose_similar(mkf, video_input)
+        # cap = cv2.VideoCapture(video_input)
+        pose_similar(mkf, video_input)
 
 
 if __name__ == '__main__':
