@@ -5,6 +5,7 @@ import numpy as np
 from mediapipe.python.solutions import holistic as mp_holistic
 import cv2
 import mediapipe as mp
+from fifth.utils import DebugOn, D, I
 
 @click.group()
 def execute():
@@ -49,7 +50,7 @@ def pose_similar(kf_landmarks, video):
         while cap.isOpened():
             success, image = cap.read()
             if not success:
-                print("Ignoring empty camera frame.")
+                I("Ignoring empty camera frame.")
                 continue
 
             # Flip the image horizontally for a later selfie-view display, and convert
@@ -71,9 +72,9 @@ def pose_similar(kf_landmarks, video):
                     mark[idx][3] = landmark.visibility
 
                 d = geo_distance(mark, kf_landmarks[i])
-                print('geo_distance:', d)
+                D('geo_distance: %f', d)
                 if d < 1.09:
-                    print('keyframe {i} matched'.format(i=i))
+                    I('keyframe %d matched', i)
                     i += 1
 
             if not anno_image_show(results, image):
@@ -128,7 +129,11 @@ def load_keyframe_landmarks(keyframes):
 @execute.command()
 @click.option('-k', '--keyframes', required=True, help='dir containing the keyframes')
 @click.option('-i', '--video-input', default=None, help='input video')
-def kf(keyframes, video_input):
+@click.option('--debug', default=False, type=bool, help='debug')
+def kf(keyframes, video_input, debug):
+    if debug:
+        DebugOn()
+
     with open(f'{keyframes}/.kflist') as kflst:
         kfs = [f'{keyframes}/{x}'[:-1] for x in kflst.readlines()]
         # print(kfs)
