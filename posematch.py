@@ -76,6 +76,9 @@ def pose_similar(kf_landmarks, video):
                 if d < 1.09:
                     I('keyframe %d matched', i)
                     i += 1
+                    if i >= len(kf_landmarks):
+                        I('all keyframes matched')
+                        break
 
             if not anno_image_show(results, image):
                 break
@@ -101,7 +104,7 @@ def load_keyframe_landmarks(keyframes):
             if not results.pose_landmarks:
                 continue
 
-            print(
+            D(
                 f'Nose coordinates: ('
                 f'{results.pose_landmarks.landmark[mp_holistic.PoseLandmark.NOSE].x * image_width}, '
                 f'{results.pose_landmarks.landmark[mp_holistic.PoseLandmark.NOSE].y * image_height})'
