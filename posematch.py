@@ -19,8 +19,9 @@ mp_pose = mp.solutions.pose
 # mark2 = np.array(1000 * 33 * 4)
 
 
-def geo_distance(mark1, mark2):
+def geo_distance(len_shin, mark1, mark2):
     t = np.sqrt(((mark1 - mark2)**2).sum())
+    t /= len_shin
     # D('geo_distance: %s - %s', str(mark1), str(mark2))
     return t
 
@@ -36,6 +37,20 @@ def anno_image_show(results, image):
         return False
 
     return True
+
+
+def landmark_remove_trivial(landmarks):
+    mk = landmarks
+
+    # remove face besides nose
+    for i in range(1, 11):
+        mk[i, 0] = 0
+        mk[i, 1] = 0
+        mk[i, 2] = 0
+        mk[i, 3] = 0
+
+    return mk
+
 
 
 def landmark_normalize(len_shin, landmarks):    
@@ -54,6 +69,8 @@ def landmark_normalize(len_shin, landmarks):
     scale = len_shin / slen
     mk *= scale
 
+    mk = landmark_remove_trivial(mk)
+
     return mk
 
 
@@ -66,7 +83,10 @@ def pose_similar(kf_landmarks, video, geo_dist):
         landmark_normalize(len_shin, kf)
 
     # For video file input
-    cap = cv2.VideoCapture(video)
+    if video is None:
+        cap = cv2.VideoCapture(0)
+    else:
+        cap = cv2.VideoCapture(video)
 
     with mp_pose.Pose(
             min_detection_confidence=0.5,
@@ -101,7 +121,7 @@ def pose_similar(kf_landmarks, video, geo_dist):
 
                 landmark_normalize(len_shin, mark)
 
-                d = geo_distance(mark, kf_landmarks[i])
+                d = geo_distance(len_shin, mark, kf_landmarks[i])
                 D('geo_distance: %f', d)
                 if d < geo_dist:
                     I('keyframe %d matched', i)
