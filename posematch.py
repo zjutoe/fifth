@@ -76,6 +76,8 @@ def landmark_normalize(len_shin, landmarks):
 
 
 def pose_similar(kf_landmarks, video, geo_dist):
+    success = False
+
     # normalize the keyframes
     std_kf = kf_landmarks[0]
     len_shin = np.sqrt(np.sum((std_kf[27] - std_kf[25])**2))
@@ -128,6 +130,7 @@ def pose_similar(kf_landmarks, video, geo_dist):
                     i += 1
                     if i >= len(kf_landmarks):
                         I('all keyframes matched')
+                        success = True
                         break
 
             if not anno_image_show(results, image):
@@ -135,7 +138,7 @@ def pose_similar(kf_landmarks, video, geo_dist):
 
     cap.release()
 
-    return mark
+    return success
 
 
 def load_keyframe_landmarks(keyframes):
@@ -179,12 +182,50 @@ def load_keyframe_landmarks(keyframes):
     return marks
 
 
+def playback_video(video):
+    cap = cv2.VideoCapture(video)
+    # cap = cv2.VideoCapture(0)
+
+    with mp_pose.Pose(
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5) as pose:
+        while cap.isOpened():
+            success, image = cap.read()
+            if not success:
+                print("Ignoring empty camera frame.")
+                # If loading a video, use 'break' instead of 'continue'.
+                break
+
+            # Flip the image horizontally for a later selfie-view display, and convert
+            # the BGR image to RGB.
+            # image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # To improve performance, optionally mark the image as not writeable to
+            # pass by reference.
+            image.flags.writeable = False
+            results = pose.process(image)
+
+            # Draw the pose annotation on the image.
+            image.flags.writeable = True
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            mp_drawing.draw_landmarks(
+                image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            cv2.imshow('MediaPipe Pose', image)
+            if cv2.waitKey(5) & 0xFF == 27:
+                break
+
+    cap.release()
+    
+
+
 @execute.command()
 @click.option('-k', '--keyframes', required=True, help='dir containing the keyframes')
+@click.option('-r', '--reference', default=None, help='the reference video file')
 @click.option('-i', '--video-input', default=None, help='input video')
 @click.option('-g', '--geo-dist', default=1.1, help='geometry distance')
+@click.option('-p', '--video-pass', default=None, help='pass video')
 @click.option('--debug', default=False, type=bool, help='debug')
-def kf(keyframes, video_input, geo_dist, debug):
+def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
     if debug:
         DebugOn()
 
@@ -193,9 +234,12 @@ def kf(keyframes, video_input, geo_dist, debug):
         # print(kfs)
         mkf = load_keyframe_landmarks(kfs)
 
-        # cap = cv2.VideoCapture(video_input)
-        pose_similar(mkf, video_input, geo_dist)
+        if reference:
+            playback_video(reference)
 
+        sim = pose_similar(mkf, video_input, geo_dist)
+        if sim:
+            playback_video(video_pass)
 
 
 if __name__ == '__main__':
