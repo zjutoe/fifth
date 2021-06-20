@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 import click
+import time
+import threading
+import multiprocessing
 import numpy as np
 from mediapipe.python.solutions import holistic as mp_holistic
 import cv2
@@ -215,6 +218,125 @@ def playback_video(video):
                 break
 
     cap.release()
+
+
+def show_video(video):
+    cap = cv2.VideoCapture(video)
+    while cap.isOpened():
+        success, image = cap.read()
+        if not success:
+            print("Ignoring empty camera frame.")
+            # If loading a video, use 'break' instead of 'continue'.
+            break
+        cv2.imshow('video', image)
+        if cv2.waitKey(5) & 0xFF == 27:
+            break
+
+    cap.release()
+    
+    
+
+class VideoShow:
+    """
+    Class that continuously shows a frame using a dedicated thread.
+    """
+
+    def __init__(self, frame=None):
+        self.frame = frame
+        self.stopped = False
+
+        
+    def start(self):
+        threading.Thread(target=self.show, args=()).start()
+        return self
+    
+
+    def show(self):
+        while not self.stopped:
+            cv2.imshow("Video", self.frame)
+            if cv2.waitKey(1) == ord("q"):
+                self.stopped = True
+
+    def stop(self):
+        self.stopped = True
+        
+
+
+def threadVideoShow(source = 0):
+    """
+    Dedicated thread for showing video frames with VideoShow object.
+    Main thread grabs video frames.
+    """
+
+    cap = cv2.VideoCapture(source)
+    (grabbed, frame) = cap.read()
+    video_shower = VideoShow(frame).start()
+    # cps = CountsPerSec().start()
+
+    while True:
+        (grabbed, frame) = cap.read()
+        if not grabbed or video_shower.stopped:
+            video_shower.stop()
+            break
+
+        # frame = putIterationsPerSec(frame, cps.countsPerSec())
+        video_shower.frame = frame
+        # cps.increment()
+
+
+        
+class StoppableThread(threading.Thread):
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
+
+    def __init__(self,  *args, **kwargs):
+        super(StoppableThread, self).__init__(*args, **kwargs)
+        self._stop_event = threading.Event()
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
+
+
+    def run(self):
+        cap = cv2.VideoCapture(source)
+        (grabbed, frame) = cap.read()
+        video_shower = VideoShow(frame).start()
+        cps = CountsPerSec().start()
+
+        while not self.stopped():
+            (grabbed, frame) = cap.read()
+            if not grabbed or video_shower.stopped:
+                video_shower.stop()
+                break
+
+            frame = putIterationsPerSec(frame, cps.countsPerSec())
+            video_shower.frame = frame
+            cps.increment()
+
+
+            
+def procVideoShow(source = 0):
+    cap = cv2.VideoCapture(source)
+    (grabbed, frame) = cap.read()
+    while True:
+        (grabbed, frame) = cap.read()
+        if not grabbed:
+            cv2.imshow("Video", frame)
+    
+
+    
+def play_video_proc(source):
+    # proc = multiprocessing.Process(target=procVideoShow, args=(source,))
+    proc = multiprocessing.Process(target=show_video, args=(source,))
+    proc.start()
+    # time.sleep(10)
+    # Terminate the process
+    # proc.terminate()  # sends a SIGTERM
+
+    return proc
     
 
 
@@ -241,6 +363,22 @@ def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
         if sim:
             playback_video(video_pass)
 
+
+
+
+            
+            
+@execute.command()
+def test():
+    # threadVideoShow()
+    a0 = play_video_proc(0)
+    a1 = play_video_proc('1.MP4')
+
+    time.sleep(10)
+    a0.terminate()
+    a1.terminate()
+    
+    
 
 if __name__ == '__main__':
     execute()
