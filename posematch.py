@@ -220,14 +220,14 @@ def playback_video(video):
     cap.release()
 
 
-def show_video(video):
+def loop_video(video):
     cap = cv2.VideoCapture(video)
     while cap.isOpened():
         success, image = cap.read()
         if not success:
-            print("Ignoring empty camera frame.")
-            # If loading a video, use 'break' instead of 'continue'.
-            break
+            D("end frame.")
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            continue
         cv2.imshow('video', image)
         if cv2.waitKey(5) & 0xFF == 27:
             break
@@ -330,8 +330,9 @@ def procVideoShow(source = 0):
     
 def play_video_proc(source):
     # proc = multiprocessing.Process(target=procVideoShow, args=(source,))
-    proc = multiprocessing.Process(target=show_video, args=(source,))
+    proc = multiprocessing.Process(target=loop_video, args=(source,))
     proc.start()
+
     # time.sleep(10)
     # Terminate the process
     # proc.terminate()  # sends a SIGTERM
@@ -357,7 +358,8 @@ def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
         mkf = load_keyframe_landmarks(kfs)
 
         if reference:
-            playback_video(reference)
+            # playback_video(reference)
+            pb = play_video_proc(reference)
 
         sim = pose_similar(mkf, video_input, geo_dist)
         if sim:
@@ -371,12 +373,12 @@ def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
 @execute.command()
 def test():
     # threadVideoShow()
-    a0 = play_video_proc(0)
+    # a0 = play_video_proc(0)
     a1 = play_video_proc('1.MP4')
 
-    time.sleep(10)
-    a0.terminate()
-    a1.terminate()
+    # time.sleep(10)
+    # a0.terminate()
+    # a1.terminate()
     
     
 
