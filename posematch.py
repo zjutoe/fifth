@@ -361,12 +361,13 @@ def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
             # playback_video(reference)
             pb = play_video_proc(reference)
 
-        sim = pose_similar(mkf, video_input, geo_dist)
-        if sim:
-            playback_video(video_pass)
+        sim = False
+        while not sim:
+            sim = pose_similar(mkf, video_input, geo_dist)
 
-
-
+        # now pass
+        pb.terminate()
+        playback_video(video_pass)
 
             
             
