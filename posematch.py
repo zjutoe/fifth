@@ -4,11 +4,13 @@ import click
 import time
 import threading
 import multiprocessing
+import subprocess
 import numpy as np
 from mediapipe.python.solutions import holistic as mp_holistic
 import cv2
 import mediapipe as mp
 from fifth.utils import DebugOn, D, I
+from fifth.common import overlay_transparent
 
 @click.group()
 def execute():
@@ -29,17 +31,15 @@ def geo_distance(len_shin, mark1, mark2):
     return t
 
 
-def anno_image_show(results, image):
+def anno_image(results, image):
     # Draw the pose annotation on the image.
     image.flags.writeable = True
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     mp_drawing.draw_landmarks(
         image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-    cv2.imshow('MediaPipe Pose', image)
-    if cv2.waitKey(5) & 0xFF == 27:
-        return False
 
-    return True
+    return image
+    
 
 
 def landmark_remove_trivial(landmarks):
@@ -78,7 +78,13 @@ def landmark_normalize(len_shin, landmarks):
 
 
 
+def pose_match(landmarks, kf_landmarks):
+    results = landmarks
+    
+
+
 def pose_similar(kf_landmarks, geo_dist = 10, source = 0, reference = None):
+    D(f'pose_similar({kf_landmarks}, {geo_dist}, {source}, {reference})')
     success = False
 
     # normalize the keyframes
@@ -105,9 +111,10 @@ def pose_similar(kf_landmarks, geo_dist = 10, source = 0, reference = None):
             if not ref.isOpened():
                 break
             ref_success, ref_image = ref.read()
-            if not ref_success:
+            while not ref_success:
                 D("reference end frame")
-            cv2.imshow('reference', ref_image)
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ref_success, ref_image = ref.read()
 
             # Flip the image horizontally for a later selfie-view display, and convert
             # the BGR image to RGB.
@@ -140,11 +147,14 @@ def pose_similar(kf_landmarks, geo_dist = 10, source = 0, reference = None):
                         success = True
                         break
 
-            if not anno_image_show(results, image):
-                break
+            image = anno_image(results, image)
+            h, w, _ = ref_image.shape
+            image = overlay_transparent(ref_image, image, int(w/2), int(h/2))
+            cv2.imshow('MediaPipe Pose', image)
+            if cv2.waitKey(5) & 0xFF == 27:
+                return False
 
     cap.release()
-
     return success
 
 
@@ -348,7 +358,7 @@ def play_video_proc(source):
 @execute.command()
 @click.option('-k', '--keyframes', required=True, help='dir containing the keyframes')
 @click.option('-r', '--reference', default=None, help='the reference video file')
-@click.option('-i', '--video-input', default=None, help='input video')
+@click.option('-i', '--video-input', default=0, help='input video, 0 (the webcam) by default')
 @click.option('-g', '--geo-dist', default=1.1, help='geometry distance')
 @click.option('-p', '--video-pass', default=None, help='pass video')
 @click.option('--debug', default=False, type=bool, help='debug')
@@ -370,7 +380,9 @@ def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
         sim = pose_similar(mkf, geo_dist, video_input, reference)
 
         # now pass
-        pb.terminate()
+        # play the trumpian sound
+        return_code = subprocess.call(["afplay", 'tmp/mofashidai.mp3'])
+
         playback_video(video_pass)
 
             
