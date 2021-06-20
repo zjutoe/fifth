@@ -4,13 +4,15 @@ import click
 import time
 import threading
 import multiprocessing
-import subprocess
+
 import numpy as np
 from mediapipe.python.solutions import holistic as mp_holistic
 import cv2
 import mediapipe as mp
 from fifth.utils import DebugOn, D, I
 from fifth.common import overlay_transparent
+from fifth.sound import play_mp3
+from fifth.video import play_video
 
 @click.group()
 def execute():
@@ -56,8 +58,32 @@ def landmark_remove_trivial(landmarks):
 
 
 
-def landmark_normalize(len_shin, landmarks):    
+def landmark_normalize(len_shin, landmarks):
     mk = landmarks
+    # return mk                   # debug
+
+    # make the nose as the coordinate center
+    nose = mk[0]
+    x, y, z = nose[0], nose[1], nose[2]
+    mk[:, 0] -= x
+    mk[:, 1] -= y
+    mk[:, 2] -= z
+
+    # scale size
+    slen = np.sqrt(np.sum((mk[27] - mk[25])**2))
+    scale = len_shin / slen
+    mk *= scale
+
+    mk = landmark_remove_trivial(mk)
+
+    return mk
+
+
+
+def landmark_norm(landmarks):
+    mk = landmarks
+    len_shin = np.sqrt(np.sum((mk[27] - mk[25])**2))
+    
     # return mk                   # debug
 
     # make the nose as the coordinate center
@@ -135,7 +161,7 @@ def pose_similar(kf_landmarks, geo_dist = 10, source = 0, reference = None):
                     mark[idx][2] = landmark.z
                     mark[idx][3] = landmark.visibility
 
-                landmark_normalize(len_shin, mark)
+                landmark_normalize(len_shin, mark) # FIXME: get the users' shin 
 
                 d = geo_distance(len_shin, mark, kf_landmarks[i])
                 D('geo_distance: %f', d)
@@ -199,6 +225,9 @@ def load_keyframe_landmarks(keyframes):
     return marks
 
 
+
+
+
 def playback_video(video):
     cap = cv2.VideoCapture(video)
     # cap = cv2.VideoCapture(0)
@@ -234,21 +263,7 @@ def playback_video(video):
     cap.release()
 
 
-def loop_video(video):
-    cap = cv2.VideoCapture(video)
-    while cap.isOpened():
-        success, image = cap.read()
-        if not success:
-            D("end frame.")
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            continue
-        cv2.imshow('video', image)
-        if cv2.waitKey(5) & 0xFF == 27:
-            break
-
-    cap.release()
-    
-    
+   
 
 class VideoShow:
     """
@@ -339,21 +354,110 @@ def procVideoShow(source = 0):
         (grabbed, frame) = cap.read()
         if not grabbed:
             cv2.imshow("Video", frame)
-    
+
+
+
+
+def read_video_capture(cap, is_cam):
+    if not cap.isOpened():
+        return False, None
+
+    success, image = cap.read()
+    if not success:
+        if is_cam:
+            I('Ignoring empty camera frame')
+            return True, None
+        else:
+            I('video file ends')
+            return False, None
+
+    return success, image
+
+
+def landmarks_to_array(landmark, a):
+    for i, mk in enumerate(landmark):
+        a[i][0] = mk.x
+        a[i][1] = mk.y
+        a[i][2] = mk.z
+        a[i][3] = mk.visibility
+
+
+def calc_shin_len(landmarks):
+    return np.sqrt(np.sum((landmarks[27] - landmarks[25])**2))
+
+
+def compare_keyframes(landmark, keyframes, i_kf, len_shin, threshold):
+    # get the shin length
+    l_shin = calc_shin_len(landmark)
+    # the len_shin is updated and get more accurate
+    if len_shin < l_shin:
+        len_shin = l_shin
+        
+    landmark = landmark_normalize(len_shin, landmark)
+
+    d = geo_distance(len_shin, landmark, keyframes)
+    D('distance: %f', d)
+    if d <= threshold:
+        I('keyframe %d matched', i_kf)
+        i_kf += 1
+        if i_kf >= len(keyframe):
+            D('all keyframes matched')
+            return True, None
+
+    return False, i_kf, len_shin
+
+
+
+def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference = None):
+    D(f'match_video_with_keyframes({video}, keyframes, {threshold}, {video_reference}')
+
+    cap = cv2.VideoCapture(video)
+    ref = cv2.VideoCapture(video_reference) if video_reference else None
+
+    with mp_pose.Pose(
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5) as pose:
+
+        len_shin = 0
+
+        i_kf = 0
+        mark = np.zeros(33 * 4).reshape(33, 4)
+        while True:
+            success, image = read_video_capture(cap, type(video) is int)
+            if not success:     # error happens
+                break
+            
+            if ref:
+                ref_success, ref_image = read_video_capture(ref, False)
+                if not ref_success:
+                    D("rewind reference video")
+                    ref.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    ref_success, ref_image = cap.read()
+                    
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image.flags.writeable = False
+            results = pose.process(image)
+            
+            if results.pose_landmarks:
+                # there are 33 landmarks
+                landmarks_to_array(results.pose_landmarks.landmark, mark)
+                match, i_kf, len_shin = compare_keyframes(mark, keyframes, i_kf, len_shin, threshold)
+                if i_kf is None:
+                    # all keyframes matched
+                    return True
+
+                image = anno_image(results, image)
+                h, w, _ = ref_image.shape
+                image = overlay_transparent(ref_image, image, int(w/2), int(h/2))
+                cv2.imshow('MediaPipe Pose', image)
+                if cv2.waitKey(5) & 0xFF == 27:
+                    return False                
+
+    cap.release()
+    ref.release()
+    return False
 
     
-def play_video_proc(source):
-    # proc = multiprocessing.Process(target=procVideoShow, args=(source,))
-    proc = multiprocessing.Process(target=loop_video, args=(source,))
-    proc.start()
-
-    # time.sleep(10)
-    # Terminate the process
-    # proc.terminate()  # sends a SIGTERM
-
-    return proc
-    
-
 
 @execute.command()
 @click.option('-k', '--keyframes', required=True, help='dir containing the keyframes')
@@ -381,7 +485,7 @@ def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
 
         # now pass
         # play the trumpian sound
-        return_code = subprocess.call(["afplay", 'tmp/mofashidai.mp3'])
+        play_mp3('tmp/mofashidai.mp3')
 
         playback_video(video_pass)
 
@@ -391,11 +495,21 @@ def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
 def test():
     # threadVideoShow()
     # a0 = play_video_proc(0)
-    a1 = play_video_proc('1.MP4')
+    # a1 = play_video_proc('1.MP4')
 
     # time.sleep(10)
     # a0.terminate()
     # a1.terminate()
+
+    keyframes = 'motions/m0'
+    with open(f'{keyframes}/.kflist') as kflst:
+        kfs = [f'{keyframes}/{x}'[:-1] for x in kflst.readlines()]
+        # print(kfs)
+        mkf = load_keyframe_landmarks(kfs)
+        ok = match_video_with_keyframes(0, mkf, 5, 'motions/m0/reference.MP4')
+
+
+    # play_video(1)
     
     
 
