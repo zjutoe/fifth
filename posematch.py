@@ -78,7 +78,7 @@ def landmark_normalize(len_shin, landmarks):
 
 
 
-def pose_similar(kf_landmarks, video, geo_dist):
+def pose_similar(kf_landmarks, geo_dist = 10, source = 0, reference = None):
     success = False
 
     # normalize the keyframes
@@ -87,11 +87,8 @@ def pose_similar(kf_landmarks, video, geo_dist):
     for kf in kf_landmarks:
         landmark_normalize(len_shin, kf)
 
-    # For video file input
-    if video is None:
-        cap = cv2.VideoCapture(0)
-    else:
-        cap = cv2.VideoCapture(video)
+    cap = cv2.VideoCapture(source)
+    ref = cv2.VideoCapture(reference) if reference else None
 
     with mp_pose.Pose(
             min_detection_confidence=0.5,
@@ -104,6 +101,13 @@ def pose_similar(kf_landmarks, video, geo_dist):
             if not success:
                 I("Ignoring empty camera frame.")
                 continue
+
+            if not ref.isOpened():
+                break
+            ref_success, ref_image = ref.read()
+            if not ref_success:
+                D("reference end frame")
+            cv2.imshow('reference', ref_image)
 
             # Flip the image horizontally for a later selfie-view display, and convert
             # the BGR image to RGB.
@@ -357,13 +361,13 @@ def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
         # print(kfs)
         mkf = load_keyframe_landmarks(kfs)
 
-        if reference:
-            # playback_video(reference)
-            pb = play_video_proc(reference)
+        # if reference:
+        #     # playback_video(reference)
+        #     pb = play_video_proc(reference)
 
         sim = False
-        while not sim:
-            sim = pose_similar(mkf, video_input, geo_dist)
+        # while not sim:
+        sim = pose_similar(mkf, geo_dist, video_input, reference)
 
         # now pass
         pb.terminate()
