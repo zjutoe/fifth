@@ -4,6 +4,7 @@ import click
 import time
 import threading
 import multiprocessing
+import subprocess
 
 import numpy as np
 from mediapipe.python.solutions import holistic as mp_holistic
@@ -12,7 +13,7 @@ import mediapipe as mp
 from fifth.utils import DebugOn, D, I
 from fifth.common import overlay_transparent
 from fifth.sound import play_mp3
-from fifth.video import play_video, image_show_scaled
+from fifth.video import play_video, image_show_scaled, play_video_vlc
 
 @click.group()
 def execute():
@@ -412,7 +413,9 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
     D(f'match_video_with_keyframes({video}, keyframes, {threshold}, {video_reference}')
 
     cap = cv2.VideoCapture(video)
-    ref = cv2.VideoCapture(video_reference) if video_reference else None
+    # ref = cv2.VideoCapture(video_reference) if video_reference else None
+    # proc_ref = subprocess.Popen(['/Applications/VLC.app/Contents/MacOS/VLC', video_reference])
+    proc_ref = play_video_vlc(video_reference)
 
     with mp_pose.Pose(
             min_detection_confidence=0.5,
@@ -427,12 +430,12 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
             if not success:     # error happens
                 break
             
-            if ref:
-                ref_success, ref_image = read_video_capture(ref, False)
-                if not ref_success:
-                    D("rewind reference video")
-                    ref.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    ref_success, ref_image = cap.read()
+            # if ref:
+            #     ref_success, ref_image = read_video_capture(ref, False)
+            #     if not ref_success:
+            #         D("rewind reference video")
+            #         ref.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            #         ref_success, ref_image = cap.read()
                     
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             image.flags.writeable = False
@@ -448,11 +451,13 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
 
                 image = anno_image(results, image)
                 image_show_scaled(image, 'MediaPipe')
-                cv2.imshow('reference', ref_image)
+                # cv2.imshow('reference', ref_image)
                 
-                if cv2.waitKey(5) & 0xFF == 27:
+                if cv2.waitKey(1) & 0xFF == 27:
                     return False                
 
+    proc_ref.terminate()
+    
     cap.release()
     ref.release()
     return False
@@ -463,10 +468,10 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
 @click.option('-k', '--keyframes', required=True, help='dir containing the keyframes')
 @click.option('-r', '--reference', default=None, help='the reference video file')
 @click.option('-i', '--video-input', default=0, help='input video, 0 (the webcam) by default')
-@click.option('-g', '--geo-dist', default=1.1, help='geometry distance')
+@click.option('-t', '--threshold', default=1.1, help='geometry distance threshold')
 @click.option('-p', '--video-pass', default=None, help='pass video')
 @click.option('--debug', default=False, type=bool, help='debug')
-def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
+def kf(keyframes, reference, video_input, threshold, video_pass, debug):
     if debug:
         DebugOn()
 
@@ -481,7 +486,8 @@ def kf(keyframes, reference, video_input, geo_dist, video_pass, debug):
 
         sim = False
         # while not sim:
-        sim = pose_similar(mkf, geo_dist, video_input, reference)
+        # sim = pose_similar(mkf, geo_dist, video_input, reference)
+        sim = match_video_with_keyframes(video_input, mkf, threshold, reference)
 
         # now pass
         # play the trumpian sound
