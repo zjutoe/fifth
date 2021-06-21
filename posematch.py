@@ -13,7 +13,7 @@ import mediapipe as mp
 from fifth.utils import DebugOn, D, I
 from fifth.common import overlay_transparent
 from fifth.sound import play_mp3
-from fifth.video import play_video, image_show_scaled, play_video_vlc
+from fifth.video import play_video, VideoGet, image_show_scaled
 
 @click.group()
 def execute():
@@ -413,9 +413,11 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
     D(f'match_video_with_keyframes({video}, keyframes, {threshold}, {video_reference}')
 
     cap = cv2.VideoCapture(video)
+    ref = VideoGet(video_reference).start() if video_reference else None
+    
     # ref = cv2.VideoCapture(video_reference) if video_reference else None
     # proc_ref = subprocess.Popen(['/Applications/VLC.app/Contents/MacOS/VLC', video_reference])
-    proc_ref = play_video_vlc(video_reference)
+    # proc_ref = play_video_vlc(video_reference)    
 
     with mp_pose.Pose(
             min_detection_confidence=0.5,
@@ -429,7 +431,7 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
             success, image = read_video_capture(cap, type(video) is int)
             if not success:     # error happens
                 break
-            
+
             # if ref:
             #     ref_success, ref_image = read_video_capture(ref, False)
             #     if not ref_success:
@@ -451,15 +453,14 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
 
                 image = anno_image(results, image)
                 image_show_scaled(image, 'MediaPipe')
-                # cv2.imshow('reference', ref_image)
+                cv2.imshow('reference', ref.frame)
                 
                 if cv2.waitKey(1) & 0xFF == 27:
+                    ref.stop()
                     return False                
 
-    proc_ref.terminate()
-    
     cap.release()
-    ref.release()
+    # ref.release()
     return False
 
     
