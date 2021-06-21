@@ -12,7 +12,7 @@ import mediapipe as mp
 from fifth.utils import DebugOn, D, I
 from fifth.common import overlay_transparent
 from fifth.sound import play_mp3
-from fifth.video import play_video
+from fifth.video import play_video, image_show_scaled
 
 @click.group()
 def execute():
@@ -447,9 +447,9 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
                     return True
 
                 image = anno_image(results, image)
-                h, w, _ = ref_image.shape
-                image = overlay_transparent(ref_image, image, int(w/2), int(h/2))
-                cv2.imshow('MediaPipe Pose', image)
+                image_show_scaled(image, 'MediaPipe')
+                cv2.imshow('reference', ref_image)
+                
                 if cv2.waitKey(5) & 0xFF == 27:
                     return False                
 
