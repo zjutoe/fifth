@@ -89,7 +89,7 @@ def landmark_normalize(len_shin, landmarks):
     scale = len_shin / slen
     mk *= scale
 
-    mk = landmark_remove_trivial(mk)
+    # mk = landmark_remove_trivial(mk)
 
     return mk
 
@@ -408,6 +408,7 @@ def compare_keyframes(landmark, keyframes, i_kf, len_shin, len_shin_old, thresho
     l_shin = calc_shin_len(landmark)
     # the len_shin is updated and get more accurate
     if len_shin < l_shin:
+        D("len_shin updated %f %f", len_shin, l_shin)
         len_shin_old = len_shin
         len_shin = l_shin
 
