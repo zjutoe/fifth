@@ -14,4 +14,4 @@ export PYTHONPATH=`dirname $PWD`
 
 
 # ./posematch.py kf -r motions/m0/reference.MP4 -k motions/m0 -p 1.MP4 --debug True -i 0 -t 28
-./posematch.py kf -k motions/m0 -p 1.MP4 --debug True -i 0 -t 20
+./posematch.py kf -k motions/m0 --debug True -i 0 -t 5

@@ -73,7 +73,7 @@ def image_show_scaled(image, win_name):
     h, w, _ = image.shape
     image = cv2.resize(image, (int(w/2), int(h/2)))
     cv2.namedWindow(win_name)
-    cv2.moveWindow(win_name, 600,600)
+    # cv2.moveWindow(win_name, 600,600)
     cv2.imshow(win_name, image)
 
 

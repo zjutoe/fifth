@@ -87,7 +87,7 @@ def landmark_normalize(len_shin, landmarks):
     # scale size
     slen = np.sqrt(np.sum((mk[27] - mk[25])**2))
     scale = len_shin / slen
-    # mk *= scale
+    mk *= scale
 
     mk = landmark_remove_trivial(mk)
 
@@ -149,13 +149,14 @@ def pose_similar(kf_landmarks, geo_dist = 10, source = 0, reference = None):
                 I("Ignoring empty camera frame.")
                 continue
 
-            if not ref.isOpened():
-                break
-            ref_success, ref_image = ref.read()
-            while not ref_success:
-                D("reference end frame")
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            if ref:
+                if not ref.isOpened():
+                    break
                 ref_success, ref_image = ref.read()
+                while not ref_success:
+                    D("reference end frame")
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    ref_success, ref_image = ref.read()
 
             # Flip the image horizontally for a later selfie-view display, and convert
             # the BGR image to RGB.
@@ -189,8 +190,9 @@ def pose_similar(kf_landmarks, geo_dist = 10, source = 0, reference = None):
                         break
 
             image = anno_image(results, image)
-            h, w, _ = ref_image.shape
-            image = overlay_transparent(ref_image, image, int(w/2), int(h/2))
+            if ref:
+                h, w, _ = ref_image.shape
+                image = overlay_transparent(ref_image, image, int(w/2), int(h/2))
             cv2.imshow('MediaPipe Pose', image)
             if cv2.waitKey(5) & 0xFF == 27:
                 return False
@@ -469,8 +471,9 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
             #         D("rewind reference video")
             #         ref.set(cv2.CAP_PROP_POS_FRAMES, 0)
             #         ref_success, ref_image = cap.read()
-                    
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            
+            image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)        
+            # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             image.flags.writeable = False
             results = pose.process(image)
             
@@ -521,7 +524,7 @@ def kf(keyframes, reference, video_input, threshold, video_pass, debug):
 
         sim = False
         # while not sim:
-        # sim = pose_similar(mkf, geo_dist, video_input, reference)
+        # sim = pose_similar(mkf, threshold, video_input, reference)
         sim = match_video_with_keyframes(video_input, mkf, threshold, reference)
 
         # now pass
