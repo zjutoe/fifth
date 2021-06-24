@@ -413,10 +413,11 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
     D(f'match_video_with_keyframes({video}, keyframes, {threshold}, {video_reference}')
 
     cap = cv2.VideoCapture(video)
-    ref = VideoGet(video_reference).start() if video_reference else None
+    # ref = VideoGet(video_reference).start() if video_reference else None
     
     # ref = cv2.VideoCapture(video_reference) if video_reference else None
     # proc_ref = subprocess.Popen(['/Applications/VLC.app/Contents/MacOS/VLC', video_reference])
+    proc_ref = subprocess.Popen(['ffplay', video_reference, '-fs'])
     # proc_ref = play_video_vlc(video_reference)    
 
     with mp_pose.Pose(
@@ -449,14 +450,15 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
                 match, i_kf, len_shin = compare_keyframes(mark, keyframes, i_kf, len_shin, threshold)
                 if i_kf is None:
                     # all keyframes matched
+                    proc_ref.terminate()
                     return True
 
                 image = anno_image(results, image)
                 image_show_scaled(image, 'MediaPipe')
-                cv2.imshow('reference', ref.frame)
+                # cv2.imshow('reference', ref.frame)
                 
                 if cv2.waitKey(1) & 0xFF == 27:
-                    ref.stop()
+                    # ref.stop()
                     return False                
 
     cap.release()
