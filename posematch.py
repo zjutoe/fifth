@@ -6,6 +6,7 @@ import threading
 import multiprocessing
 import subprocess
 
+import math
 import numpy as np
 from mediapipe.python.solutions import holistic as mp_holistic
 import cv2
@@ -431,6 +432,97 @@ def compare_keyframes(landmark, keyframes, i_kf, len_shin, len_shin_old, thresho
 
 
 
+def angle_of_line(p1, p2):
+    x1, y1 = p1[0], p1[1]
+    x2, y2 = p2[0], p2[1]
+
+    angle = math.atan2(y1-y2, x1-x2)
+    return angle
+
+
+def limbs_of_frame(f):
+    lines = [
+        (f[12], f[14]),       # right upper arm
+        (f[14], f[16]),       # right lower arm
+        (f[11], f[13]),       # left upper arm
+        (f[13], f[15]),       # left lower arm
+
+        (f[24], f[26]),       # right thigh
+        (f[26], f[28]),       # right shin
+        (f[23], f[25]),       # left thigh
+        (f[25], f[27]),       # left shin
+    ]
+
+    return lines
+    
+
+def angles_of_limbs(limbs):
+    return [ angle_of_line(*line) for line in limbs ]
+
+
+def compare_frames_with_line_angles(f1, f2):
+    limbs1 = limbs_of_frame(f1)
+    limbs2 = limbs_of_frame(f2)
+
+    angles1 = angles_of_limbs(limbs1)
+    angles2 = angles_of_limbs(limbs2)
+    dif = np.array(angles1) - np.array(angles2)
+    dif = np.sum(dif**2)
+
+    D('angles1:%s', str(angles1))
+    D('angles2:%s', str(angles2))
+    D('dif:%f', dif)
+
+    return dif
+
+
+
+def compare_video_with_keyframes(video, keyframes, threshold):
+    cap = cv2.VideoCapture(video)
+    
+    with mp_pose.Pose(
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5) as pose:
+
+        i_kf = 0
+        mark = np.zeros(33 * 4).reshape(33, 4)
+        while True:
+            success, image = read_video_capture(cap, type(video) is int)
+            if not success:     # error happens
+                break
+
+            # Flip the image horizontally for a later selfie-view display, and convert
+            # the BGR image to RGB.
+            image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
+            image.flags.writeable = False
+            results = pose.process(image)
+            
+            if results.pose_landmarks:
+                # there are 33 landmarks
+                landmarks_to_array(results.pose_landmarks.landmark, mark)
+                kf = keyframes[i_kf]
+                dif = compare_frames_with_line_angles(mark, kf)
+                if dif < threshold: # a match
+                    D('matched keyframe %d', i_kf)
+                    i_kf += 1
+                    if i_kf >= len(keyframes): # all match
+                        D('matched all keyframes')
+                        return True
+
+                image = anno_image(results, image)
+                image_show_scaled(image, 'MediaPipe')
+                                
+                if cv2.waitKey(1) & 0xFF == 27:
+                    # ref.stop()
+                    return False
+
+    cap.release()
+    return False
+            
+    
+
+
+
 def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference = None):
     D(f'match_video_with_keyframes({video}, keyframes, {threshold}, {video_reference}')
 
@@ -519,14 +611,17 @@ def kf(keyframes, reference, video_input, threshold, video_pass, debug):
         # print(kfs)
         mkf = load_keyframe_landmarks(kfs)
 
-        # if reference:
+        if reference:
+            proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-loop 0'])
+
         #     # playback_video(reference)
         #     pb = play_video_proc(reference)
 
         sim = False
         # while not sim:
         # sim = pose_similar(mkf, threshold, video_input, reference)
-        sim = match_video_with_keyframes(video_input, mkf, threshold, reference)
+        # sim = match_video_with_keyframes(video_input, mkf, threshold, reference)
+        sim = compare_video_with_keyframes(video_input, mkf, threshold)
 
         # now pass
         # play the trumpian sound
@@ -534,6 +629,8 @@ def kf(keyframes, reference, video_input, threshold, video_pass, debug):
             play_mp3('tmp/success.mp3')
         else:
             play_mp3('tmp/fail.mp3')
+
+        proc_ref.terminate()
 
         # playback_video(video_pass)
 
