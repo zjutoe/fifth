@@ -387,12 +387,17 @@ def calc_shin_len(landmarks):
     return np.sqrt(np.sum((landmarks[27] - landmarks[25])**2))
 
 
-def compare_keyframes(landmark, keyframes, i_kf, len_shin, threshold):
+def compare_keyframes(landmark, keyframes, i_kf, len_shin, len_shin_old, threshold):
     # get the shin length
     l_shin = calc_shin_len(landmark)
     # the len_shin is updated and get more accurate
     if len_shin < l_shin:
+        len_shin_old = len_shin
         len_shin = l_shin
+
+    # len_shin not stable yet
+    if len_shin_old == 0 or abs(len_shin_old - len_shin)/len_shin_old > 0.1:
+        return False, i_kf, len_shin, len_shin_old
         
     landmark = landmark_normalize(len_shin, landmark)
 
@@ -401,11 +406,11 @@ def compare_keyframes(landmark, keyframes, i_kf, len_shin, threshold):
     if d <= threshold:
         I('keyframe %d matched', i_kf)
         i_kf += 1
-        if i_kf >= len(keyframe):
+        if i_kf >= len(keyframes):
             D('all keyframes matched')
-            return True, None
+            return True, None, len_shin, len_shin_old
 
-    return False, i_kf, len_shin
+    return False, i_kf, len_shin, len_shin_old
 
 
 
@@ -417,7 +422,8 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
     
     # ref = cv2.VideoCapture(video_reference) if video_reference else None
     # proc_ref = subprocess.Popen(['/Applications/VLC.app/Contents/MacOS/VLC', video_reference])
-    proc_ref = subprocess.Popen(['ffplay', video_reference, '-fs'])
+    # proc_ref = subprocess.Popen(['ffplay', video_reference, '-fs'])
+    proc_ref = subprocess.Popen(['ffplay', video_reference])
     # proc_ref = play_video_vlc(video_reference)    
 
     with mp_pose.Pose(
@@ -425,6 +431,7 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
             min_tracking_confidence=0.5) as pose:
 
         len_shin = 0
+        len_shin_old = 0
 
         i_kf = 0
         mark = np.zeros(33 * 4).reshape(33, 4)
@@ -447,7 +454,9 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
             if results.pose_landmarks:
                 # there are 33 landmarks
                 landmarks_to_array(results.pose_landmarks.landmark, mark)
-                match, i_kf, len_shin = compare_keyframes(mark, keyframes, i_kf, len_shin, threshold)
+
+                match, i_kf, len_shin, len_shin_old = compare_keyframes(mark, keyframes, i_kf, len_shin, len_shin_old, threshold)
+                
                 if i_kf is None:
                     # all keyframes matched
                     proc_ref.terminate()
@@ -494,7 +503,10 @@ def kf(keyframes, reference, video_input, threshold, video_pass, debug):
 
         # now pass
         # play the trumpian sound
-        play_mp3('tmp/mofashidai.mp3')
+        if sim:
+            play_mp3('tmp/success.mp3')
+        else:
+            play_mp3('tmp/fail.mp3')
 
         playback_video(video_pass)
 
