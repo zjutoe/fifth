@@ -477,8 +477,11 @@ def compare_frames_with_line_angles(f1, f2):
 
 
 
-def compare_video_with_keyframes(video, keyframes, threshold):
+def compare_video_with_keyframes(video, keyframes, threshold, echo_play, reference):
+    ret = False
     cap = cv2.VideoCapture(video)
+
+    proc_ref = subprocess.Popen(['ffplay', reference, '-fs']) if reference else None
     
     with mp_pose.Pose(
             min_detection_confidence=0.5,
@@ -507,21 +510,28 @@ def compare_video_with_keyframes(video, keyframes, threshold):
                     i_kf += 1
                     if i_kf >= len(keyframes): # all match
                         D('matched all keyframes')
-                        return True
+                        ret = True
+                        break
                 else:
                     D('not matched keyframe %d', i_kf)
 
-
-                image = anno_image(results, image)
-                image_show_scaled(image, 'MediaPipe')
+                if echo_play:
+                    image = anno_image(results, image)
+                    image_show_scaled(image, 'MediaPipe')
                                 
                 if cv2.waitKey(1) & 0xFF == 27:
                     # ref.stop()
-                    return False
+                    break
 
+                if proc_ref:
+                    poll = proc_ref.poll()
+                    if poll is not None:
+                        # the reference video playback terminates
+                        break
+
+    proc_ref.terminate()                            
     cap.release()
-    return False
-            
+    return ret
     
 
 
@@ -601,41 +611,30 @@ def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference
 @execute.command()
 @click.option('-k', '--keyframes', required=True, help='dir containing the keyframes')
 @click.option('-r', '--reference', default=None, help='the reference video file')
+@click.option('-R', '--reference2', default=None, help='the 2nd reference video file, with again title')
 @click.option('-i', '--video-input', default=0, help='input video, 0 (the webcam) by default')
 @click.option('-t', '--threshold', default=1.1, help='geometry distance threshold')
 @click.option('-p', '--video-pass', default=None, help='pass video')
+@click.option('-e', '--echo-play', default=False, help='echo play')
 @click.option('--debug', default=False, type=bool, help='debug')
-def kf(keyframes, reference, video_input, threshold, video_pass, debug):
+def kf(keyframes, reference, reference2, video_input, threshold, video_pass, echo_play, debug):
     if debug:
         DebugOn()
 
     with open(f'{keyframes}/.kflist') as kflst:
         kfs = [f'{keyframes}/{x}'[:-1] for x in kflst.readlines()]
-        # print(kfs)
         mkf = load_keyframe_landmarks(kfs)
 
-        if reference:
-            proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-loop', '0'])
+        # proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-loop', '0']) if reference else None
+        # proc_ref = subprocess.Popen(['ffplay', reference, '-fs']) if reference else None
 
-        #     # playback_video(reference)
-        #     pb = play_video_proc(reference)
-
-        sim = False
-        # while not sim:
-        # sim = pose_similar(mkf, threshold, video_input, reference)
-        # sim = match_video_with_keyframes(video_input, mkf, threshold, reference)
-        sim = compare_video_with_keyframes(video_input, mkf, threshold)
-
-        # now pass
-        # play the trumpian sound
-        if sim:
-            play_mp3('tmp/success.mp3')
-        else:
+        sim = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, reference)
+        while not sim:
             play_mp3('tmp/fail.mp3')
+            sim = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, reference2)
 
-        proc_ref.terminate()
+        play_mp3('tmp/success.mp3')
 
-        # playback_video(video_pass)
 
             
             
