@@ -469,8 +469,8 @@ def compare_frames_with_line_angles(f1, f2):
     dif = np.array(angles1) - np.array(angles2)
     dif = np.sum(dif**2)
 
-    D('angles1:%s', str(angles1))
-    D('angles2:%s', str(angles2))
+    # D('angles1:%s', str(angles1))
+    # D('angles2:%s', str(angles2))
     D('dif:%f', dif)
 
     return dif
@@ -508,6 +508,9 @@ def compare_video_with_keyframes(video, keyframes, threshold):
                     if i_kf >= len(keyframes): # all match
                         D('matched all keyframes')
                         return True
+                else:
+                    D('not matched keyframe %d', i_kf)
+
 
                 image = anno_image(results, image)
                 image_show_scaled(image, 'MediaPipe')
@@ -612,7 +615,7 @@ def kf(keyframes, reference, video_input, threshold, video_pass, debug):
         mkf = load_keyframe_landmarks(kfs)
 
         if reference:
-            proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-loop 0'])
+            proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-loop', '0'])
 
         #     # playback_video(reference)
         #     pb = play_video_proc(reference)
