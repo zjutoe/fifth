@@ -55,6 +55,20 @@ def landmark_remove_trivial(landmarks):
         mk[i, 2] = 0
         mk[i, 3] = 0
 
+    # remove palm
+    for i in range(17, 23):
+        mk[i, 0] = 0
+        mk[i, 1] = 0
+        mk[i, 2] = 0
+        mk[i, 3] = 0
+
+    # remove foot
+    for i in range(29, 33):
+        mk[i, 0] = 0
+        mk[i, 1] = 0
+        mk[i, 2] = 0
+        mk[i, 3] = 0        
+
     return mk
 
 
@@ -73,7 +87,7 @@ def landmark_normalize(len_shin, landmarks):
     # scale size
     slen = np.sqrt(np.sum((mk[27] - mk[25])**2))
     scale = len_shin / slen
-    mk *= scale
+    # mk *= scale
 
     mk = landmark_remove_trivial(mk)
 
@@ -417,14 +431,23 @@ def compare_keyframes(landmark, keyframes, i_kf, len_shin, len_shin_old, thresho
 def match_video_with_keyframes(video, keyframes, threshold = 10, video_reference = None):
     D(f'match_video_with_keyframes({video}, keyframes, {threshold}, {video_reference}')
 
+    # normalize the keyframes
+    std_kf = keyframes[0]
+    len_shin = np.sqrt(np.sum((std_kf[27] - std_kf[25])**2))
+    for kf in keyframes:
+        landmark_normalize(len_shin, kf)
+
     cap = cv2.VideoCapture(video)
     # ref = VideoGet(video_reference).start() if video_reference else None
     
     # ref = cv2.VideoCapture(video_reference) if video_reference else None
     # proc_ref = subprocess.Popen(['/Applications/VLC.app/Contents/MacOS/VLC', video_reference])
     # proc_ref = subprocess.Popen(['ffplay', video_reference, '-fs'])
-    proc_ref = subprocess.Popen(['ffplay', video_reference])
-    # proc_ref = play_video_vlc(video_reference)    
+    # proc_ref = play_video_vlc(video_reference)
+    
+    if video_reference:
+        proc_ref = subprocess.Popen(['ffplay', video_reference])
+
 
     with mp_pose.Pose(
             min_detection_confidence=0.5,
@@ -508,7 +531,7 @@ def kf(keyframes, reference, video_input, threshold, video_pass, debug):
         else:
             play_mp3('tmp/fail.mp3')
 
-        playback_video(video_pass)
+        # playback_video(video_pass)
 
             
             
