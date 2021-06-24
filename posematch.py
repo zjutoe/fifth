@@ -481,7 +481,7 @@ def compare_video_with_keyframes(video, keyframes, threshold, echo_play, referen
     ret = False
     cap = cv2.VideoCapture(video)
 
-    proc_ref = subprocess.Popen(['ffplay', reference, '-fs']) if reference else None
+    proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-autoexit']) if reference else None
     
     with mp_pose.Pose(
             min_detection_confidence=0.5,
