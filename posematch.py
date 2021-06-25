@@ -261,7 +261,7 @@ def play_scene(scene, echo_play = False, prev_proc_ref = None):
             succeed = compare_video_with_keyframes(video_input, mkf, threshold, feedback_interval, echo_play, timeout)
 
 
-        play_mp3('tmp/success.mp3')
+        # play_mp3('tmp/success.mp3')
         I('you pass!')
         return proc_ref
 

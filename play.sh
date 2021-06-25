@@ -52,6 +52,6 @@ export PYTHONPATH=`dirname $PWD`
 
 
 # ./posematch.py play -C config.py --debug True
-#./posematch.py play -C $Cfg --debug $Debug -i $Input -t $Threshold -e True
+# ./posematch.py play -C $Cfg --debug $Debug -i $Input -t $Threshold -e True
 ./posematch.py play -C $Cfg --debug $Debug -i $Input -t $Threshold
 
