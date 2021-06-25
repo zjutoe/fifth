@@ -162,6 +162,8 @@ def compare_video_with_keyframes(video, keyframes, threshold,
                                  echo_play, timeout):
     ret = False
     cap = cv2.VideoCapture(video)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 768)
 
     with mp_pose.Pose(
             min_detection_confidence=0.5,
