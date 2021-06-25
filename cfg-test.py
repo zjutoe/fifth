@@ -18,6 +18,7 @@ class Cfg(configurebase.ConfigureBase):
              'video_input' :video_input,
              'threshold'   :threshold,
              'timeout'     :400,
+             'feedback_interval'   :3,
             },
             
         ]

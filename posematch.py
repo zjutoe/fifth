@@ -158,7 +158,7 @@ def compare_frames_with_line_angles(f1, f2):
 
 
 
-def compare_video_with_keyframes(video, keyframes, threshold,
+def compare_video_with_keyframes(video, keyframes, threshold, feedback_interval,
                                  echo_play, timeout):
     ret = False
     cap = cv2.VideoCapture(video)
@@ -197,6 +197,10 @@ def compare_video_with_keyframes(video, keyframes, threshold,
                 if dif < threshold: # a match
                     D('matched keyframe %d', i_kf)
                     i_kf += 1
+                    
+                    if (i_kf+1) % feedback_interval == 0:
+                        play_mp3('tmp/success.mp3')
+                        
                     if i_kf >= len(keyframes): # all match
                         D('matched all keyframes')
                         ret = True
@@ -228,6 +232,7 @@ def play_scene(scene, echo_play = False, prev_proc_ref = None):
     video_input = scene['video_input']
     threshold   = scene['threshold']
     timeout     = scene['timeout']
+    feedback_interval     = scene['feedback_interval']
     
     with open(f'{keyframes}/.kflist') as kflst:
         kfs = [f'{keyframes}/{x}'[:-1] for x in kflst.readlines()]
@@ -240,7 +245,7 @@ def play_scene(scene, echo_play = False, prev_proc_ref = None):
             I('killing last stage video')
             prev_proc_ref.terminate()
 
-        succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, timeout)
+        succeed = compare_video_with_keyframes(video_input, mkf, threshold, feedback_interval, echo_play, timeout)
         while not succeed:
             play_mp3('tmp/fail.mp3')
             
@@ -253,7 +258,7 @@ def play_scene(scene, echo_play = False, prev_proc_ref = None):
             proc_ref = proc_ref2
 
             # try again
-            succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, timeout)
+            succeed = compare_video_with_keyframes(video_input, mkf, threshold, feedback_interval, echo_play, timeout)
 
 
         play_mp3('tmp/success.mp3')
