@@ -19,6 +19,7 @@ class Cfg(configurebase.ConfigureBase):
              'threshold'   :1,
              'timeout'     :62,
              'feedback_interval'   :1,
+             'green_channel': False,
             },
             
             
@@ -29,6 +30,7 @@ class Cfg(configurebase.ConfigureBase):
              'threshold'   :2,
              'timeout': 23,
              'feedback_interval'   :3,
+             'green_channel': False,
             },
             
             {'keyframes'   :'motions/m2',
@@ -38,6 +40,7 @@ class Cfg(configurebase.ConfigureBase):
              'threshold'   :4,
              'timeout': 28,
              'feedback_interval'   :3,
+             'green_channel': False,
             },
             
             {'keyframes'   :'motions/m4',
@@ -46,7 +49,8 @@ class Cfg(configurebase.ConfigureBase):
              'video_input' :self.video_input,
              'threshold'   :2,
              'timeout': 23,
-             'feedback_interval'   :3,                          
+             'feedback_interval'   :3,
+             'green_channel': False,
             },
 
             {'keyframes'   :'motions/m5',
@@ -56,6 +60,7 @@ class Cfg(configurebase.ConfigureBase):
              'threshold'   :1,
              'timeout': 47,
              'feedback_interval'   :5,
+             'green_channel': False,
             },
 
 
@@ -66,6 +71,7 @@ class Cfg(configurebase.ConfigureBase):
              'threshold'   :9,
              'timeout': 33,
              'feedback_interval'   :3,
+             'green_channel': False,
             },
 
             {'keyframes'   :'motions/m6',
@@ -74,7 +80,8 @@ class Cfg(configurebase.ConfigureBase):
              'video_input' :self.video_input,
              'threshold'   :4,
              'timeout': 136,
-             'feedback_interval'   :1,
+             'feedback_interval'   :2,
+             'green_channel': True,
             },
             
         ]

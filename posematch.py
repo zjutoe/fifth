@@ -233,13 +233,14 @@ def compare_video_with_keyframes(video, keyframes, threshold, feedback_interval,
 def play_scene(scene, echo_play = False, prev_proc_ref = None):
     I('play_scene: %s', str(scene))
     
-    keyframes   = scene['keyframes']
-    reference   = scene['reference']
-    reference2  = scene['reference2']
-    video_input = scene['video_input']
-    threshold   = scene['threshold']
-    timeout     = scene['timeout']
-    feedback_interval     = scene['feedback_interval']
+    keyframes         = scene['keyframes']
+    reference         = scene['reference']
+    reference2        = scene['reference2']
+    video_input       = scene['video_input']
+    threshold         = scene['threshold']
+    timeout           = scene['timeout']
+    feedback_interval = scene['feedback_interval']
+    green_channel     = scene['green_channel']
     
     with open(f'{keyframes}/.kflist') as kflst:
         kfs = [f'{keyframes}/{x}'[:-1] for x in kflst.readlines()]
@@ -253,8 +254,11 @@ def play_scene(scene, echo_play = False, prev_proc_ref = None):
             prev_proc_ref.terminate()
 
         succeed = compare_video_with_keyframes(video_input, mkf, threshold, feedback_interval, echo_play, timeout)
+
         while not succeed:
             play_mp3('tmp/fail.mp3')
+            if green_channel:
+                break
             
             # start the 2nd video before killing the 1st one, to keep
             # the background desktop covered
