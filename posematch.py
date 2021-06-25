@@ -283,8 +283,9 @@ def play(configure, echo_play, video_input, threshold, debug):
     # cfg.video_input = update_if_not_none(video_input, cfg.video_input)
 
     proc_ref = None
-    for scene in cfg.playlist:
-        proc_ref = play_scene(scene, echo_play, proc_ref)
+    while True:
+        for scene in cfg.playlist:
+            proc_ref = play_scene(scene, echo_play, proc_ref)
 
     if proc_ref:
         proc_ref.terminate()
