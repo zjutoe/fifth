@@ -12,8 +12,8 @@ import numpy as np
 from mediapipe.python.solutions import holistic as mp_holistic
 import cv2
 import mediapipe as mp
-from fifth.utils import DebugOn, D, I
-from fifth.common import load_cfg
+from fifth.utils import DebugOn, D, I, E
+from fifth.common import load_cfg, update_if_not_none
 from fifth.sound import play_mp3
 from fifth.video import play_video, VideoGet, image_show_scaled
 
@@ -158,21 +158,27 @@ def compare_frames_with_line_angles(f1, f2):
 
 
 
-def compare_video_with_keyframes(video, keyframes, threshold, echo_play, reference):
+def compare_video_with_keyframes(video, keyframes, threshold,
+                                 echo_play, timeout):
     ret = False
     cap = cv2.VideoCapture(video)
 
-    proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-autoexit']) if reference else None
-    
     with mp_pose.Pose(
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5) as pose:
 
+        i = 0
         i_kf = 0
         mark = np.zeros(33 * 4).reshape(33, 4)
         while True:
+            i += 1
+            D('count %d before timeout %d', i, timeout)
+            if i >= int(timeout): # FIXME timeout is str?
+                break
+                
             success, image = read_video_capture(cap, type(video) is int)
             if not success:     # error happens
+                E('fail to capture video')
                 break
 
             # Flip the image horizontally for a later selfie-view display, and convert
@@ -204,35 +210,42 @@ def compare_video_with_keyframes(video, keyframes, threshold, echo_play, referen
                     # ref.stop()
                     break
 
-                if proc_ref:
-                    poll = proc_ref.poll()
-                    if poll is not None:
-                        # the reference video playback terminates
-                        break
-
-    if proc_ref:
-        proc_ref.terminate()
-        
     cap.release()
     return ret
     
 
     
 def play_scene(scene, echo_play = False):
+    D('play_scene: %s', str(scene))
+    
     keyframes   = scene['keyframes']
     reference   = scene['reference']
     reference2  = scene['reference2']
     video_input = scene['video_input']
     threshold   = scene['threshold']
+    timeout     = scene['timeout']
     
     with open(f'{keyframes}/.kflist') as kflst:
         kfs = [f'{keyframes}/{x}'[:-1] for x in kflst.readlines()]
         mkf = load_keyframe_landmarks(kfs)
 
-        succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, reference)
+        # proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-autoexit']) if reference else None
+        proc_ref = subprocess.Popen(['ffplay', reference, '-fs']) if reference else None
+
+        succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, timeout)
         while not succeed:
             play_mp3('tmp/fail.mp3')
-            succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, reference2)
+            
+            # start the 2nd video before killing the 1st one, to keep
+            # the background desktop covered
+            proc_ref2 = subprocess.Popen(['ffplay', reference2, '-fs']) if reference2 else None
+            time.sleep(1)       # wait for the new video to start
+
+            proc_ref.terminate()
+            proc_ref = proc_ref2
+
+            # try again
+            succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, timeout)
 
         play_mp3('tmp/success.mp3')
     
@@ -273,12 +286,17 @@ def kf(keyframes, reference, reference2, video_input, threshold, video_pass, ech
 @execute.command()
 @click.option('-C', '--configure', default='config.py', help='the configure file, config.py by default')
 @click.option('-e', '--echo-play', default=False, help='echo play')
+@click.option('-i', '--video-input', default=None, type=int, help='video input, None by default')
+@click.option('-t', '--threshold', default=10, type=int, help='threshold, None by default')
 @click.option('--debug', default=False, type=bool, help='debug')
-def play(configure, echo_play, debug):
+def play(configure, echo_play, video_input, threshold, debug):
     if debug:
         DebugOn()
         
     cfg = load_cfg(configure)
+    cfg.init(video_input, threshold)
+    # cfg.video_input = update_if_not_none(video_input, cfg.video_input)
+
     for scene in cfg.playlist:
         play_scene(scene, echo_play)
     

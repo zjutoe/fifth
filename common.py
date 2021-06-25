@@ -48,3 +48,7 @@ def load_cfg(cfg):
     #
     importlib.reload(mod_cfg)
     return mod_cfg.Cfg()
+
+
+def update_if_not_none(v, v0):
+    return (v if v is not None else v0)

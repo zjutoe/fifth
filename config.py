@@ -1,11 +1,14 @@
 from fifth import configurebase
+from fifth.common import update_if_not_none
 
 class Cfg(configurebase.ConfigureBase):
     def __init__(self):
         super(Cfg, self).__init__()
 
-        self.video_input = video_input = 1
-        self.threshold = threshold = 9
+
+    def init(self, video_input, threshold):
+        self.video_input = update_if_not_none(video_input, self.video_input)
+        self.threshold = update_if_not_none(threshold, self.threshold)
 
         self.playlist = [
 
@@ -13,7 +16,7 @@ class Cfg(configurebase.ConfigureBase):
              'reference'   :None,
              'reference2'  :None,
              'video_input' :video_input,
-             'threshold'   :5,
+             'threshold'   :2,
             },
             
             {'keyframes'   :'motions/m1',
