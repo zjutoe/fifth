@@ -1,3 +1,4 @@
+import importlib
 import cv2
 import numpy as np
 
@@ -35,3 +36,15 @@ def overlay_transparent(background, overlay, x, y):
     background[y:y+h, x:x+w] = (1.0 - mask) * background[y:y+h, x:x+w] + mask * overlay_image
 
     return background
+
+
+
+
+def load_cfg(cfg):
+    mod_cfg = importlib.import_module(cfg.replace('/', '.')[:-3]) # the surffix .py is removed
+
+    # for local mode, we'll have to reload this module, otherwise only
+    # the 1st configure file will be used again and again
+    #
+    importlib.reload(mod_cfg)
+    return mod_cfg.Cfg()

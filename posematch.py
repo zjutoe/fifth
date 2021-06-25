@@ -3,8 +3,9 @@
 import click
 import time
 import threading
-import multiprocessing
+
 import subprocess
+import importlib
 
 import math
 import numpy as np
@@ -12,7 +13,7 @@ from mediapipe.python.solutions import holistic as mp_holistic
 import cv2
 import mediapipe as mp
 from fifth.utils import DebugOn, D, I
-from fifth.common import overlay_transparent
+from fifth.common import load_cfg
 from fifth.sound import play_mp3
 from fifth.video import play_video, VideoGet, image_show_scaled
 
@@ -209,12 +210,35 @@ def compare_video_with_keyframes(video, keyframes, threshold, echo_play, referen
                         # the reference video playback terminates
                         break
 
-    proc_ref.terminate()                            
+    if proc_ref:
+        proc_ref.terminate()
+        
     cap.release()
     return ret
     
 
     
+def play_scene(scene, echo_play = False):
+    keyframes   = scene['keyframes']
+    reference   = scene['reference']
+    reference2  = scene['reference2']
+    video_input = scene['video_input']
+    threshold   = scene['threshold']
+    
+    with open(f'{keyframes}/.kflist') as kflst:
+        kfs = [f'{keyframes}/{x}'[:-1] for x in kflst.readlines()]
+        mkf = load_keyframe_landmarks(kfs)
+
+        succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, reference)
+        while not succeed:
+            play_mp3('tmp/fail.mp3')
+            succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, reference2)
+
+        play_mp3('tmp/success.mp3')
+    
+
+
+
 
 @execute.command()
 @click.option('-k', '--keyframes', required=True, help='dir containing the keyframes')
@@ -244,7 +268,21 @@ def kf(keyframes, reference, reference2, video_input, threshold, video_pass, ech
         play_mp3('tmp/success.mp3')
 
 
-            
+
+
+@execute.command()
+@click.option('-C', '--configure', default='config.py', help='the configure file, config.py by default')
+@click.option('-e', '--echo-play', default=False, help='echo play')
+@click.option('--debug', default=False, type=bool, help='debug')
+def play(configure, echo_play, debug):
+    if debug:
+        DebugOn()
+        
+    cfg = load_cfg(configure)
+    for scene in cfg.playlist:
+        play_scene(scene, echo_play)
+    
+    
             
 @execute.command()
 def test():
