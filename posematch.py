@@ -214,8 +214,10 @@ def compare_video_with_keyframes(video, keyframes, threshold,
     return ret
     
 
-    
-def play_scene(scene, echo_play = False):
+
+# the previous video should be killed after a new one starts, that's
+# why we pass it as argument
+def play_scene(scene, echo_play = False, prev_proc_ref = None):
     D('play_scene: %s', str(scene))
     
     keyframes   = scene['keyframes']
@@ -228,9 +230,12 @@ def play_scene(scene, echo_play = False):
     with open(f'{keyframes}/.kflist') as kflst:
         kfs = [f'{keyframes}/{x}'[:-1] for x in kflst.readlines()]
         mkf = load_keyframe_landmarks(kfs)
-
+            
         # proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-autoexit']) if reference else None
         proc_ref = subprocess.Popen(['ffplay', reference, '-fs']) if reference else None
+        time.sleep(1)
+        if prev_proc_ref: # the previous video should be killed after a new one starts
+            prev_proc_ref.terminate()
 
         succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, timeout)
         while not succeed:
@@ -247,9 +252,58 @@ def play_scene(scene, echo_play = False):
             # try again
             succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, timeout)
 
-        play_mp3('tmp/success.mp3')
-    
 
+        play_mp3('tmp/success.mp3')
+        I('you pass!')
+        return proc_ref
+
+
+
+
+@execute.command()
+@click.option('-C', '--configure', default='config.py', help='the configure file, config.py by default')
+@click.option('-e', '--echo-play', default=False, help='echo play')
+@click.option('-i', '--video-input', default=None, type=int, help='video input, None by default')
+@click.option('-t', '--threshold', default=10, type=int, help='threshold, None by default')
+@click.option('--debug', default=False, type=bool, help='debug')
+def play(configure, echo_play, video_input, threshold, debug):
+    if debug:
+        DebugOn()
+        
+    cfg = load_cfg(configure)
+    cfg.init(video_input, threshold)
+    # cfg.video_input = update_if_not_none(video_input, cfg.video_input)
+
+    proc_ref = None
+    for scene in cfg.playlist:
+        proc_ref = play_scene(scene, echo_play, proc_ref)
+
+    if proc_ref:
+        proc_ref.terminate()
+    
+    
+            
+@execute.command()
+def test():
+    # threadVideoShow()
+    # a0 = play_video_proc(0)
+    # a1 = play_video_proc('1.MP4')
+
+    # time.sleep(10)
+    # a0.terminate()
+    # a1.terminate()
+
+    keyframes = 'motions/m0'
+    with open(f'{keyframes}/.kflist') as kflst:
+        kfs = [f'{keyframes}/{x}'[:-1] for x in kflst.readlines()]
+        # print(kfs)
+        mkf = load_keyframe_landmarks(kfs)
+        ok = match_video_with_keyframes(0, mkf, 5, 'motions/m0/reference.MP4')
+
+
+    # play_video(1)
+    
+    
 
 
 
@@ -281,48 +335,6 @@ def kf(keyframes, reference, reference2, video_input, threshold, video_pass, ech
         play_mp3('tmp/success.mp3')
 
 
-
-
-@execute.command()
-@click.option('-C', '--configure', default='config.py', help='the configure file, config.py by default')
-@click.option('-e', '--echo-play', default=False, help='echo play')
-@click.option('-i', '--video-input', default=None, type=int, help='video input, None by default')
-@click.option('-t', '--threshold', default=10, type=int, help='threshold, None by default')
-@click.option('--debug', default=False, type=bool, help='debug')
-def play(configure, echo_play, video_input, threshold, debug):
-    if debug:
-        DebugOn()
-        
-    cfg = load_cfg(configure)
-    cfg.init(video_input, threshold)
-    # cfg.video_input = update_if_not_none(video_input, cfg.video_input)
-
-    for scene in cfg.playlist:
-        play_scene(scene, echo_play)
     
-    
-            
-@execute.command()
-def test():
-    # threadVideoShow()
-    # a0 = play_video_proc(0)
-    # a1 = play_video_proc('1.MP4')
-
-    # time.sleep(10)
-    # a0.terminate()
-    # a1.terminate()
-
-    keyframes = 'motions/m0'
-    with open(f'{keyframes}/.kflist') as kflst:
-        kfs = [f'{keyframes}/{x}'[:-1] for x in kflst.readlines()]
-        # print(kfs)
-        mkf = load_keyframe_landmarks(kfs)
-        ok = match_video_with_keyframes(0, mkf, 5, 'motions/m0/reference.MP4')
-
-
-    # play_video(1)
-    
-    
-
 if __name__ == '__main__':
     execute()
