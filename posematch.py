@@ -218,7 +218,7 @@ def compare_video_with_keyframes(video, keyframes, threshold,
 # the previous video should be killed after a new one starts, that's
 # why we pass it as argument
 def play_scene(scene, echo_play = False, prev_proc_ref = None):
-    D('play_scene: %s', str(scene))
+    I('play_scene: %s', str(scene))
     
     keyframes   = scene['keyframes']
     reference   = scene['reference']
@@ -235,6 +235,7 @@ def play_scene(scene, echo_play = False, prev_proc_ref = None):
         proc_ref = subprocess.Popen(['ffplay', reference, '-fs']) if reference else None
         time.sleep(1)
         if prev_proc_ref: # the previous video should be killed after a new one starts
+            I('killing last stage video')
             prev_proc_ref.terminate()
 
         succeed = compare_video_with_keyframes(video_input, mkf, threshold, echo_play, timeout)

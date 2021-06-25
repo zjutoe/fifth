@@ -23,6 +23,10 @@ while [[ $# -gt 0 ]]; do
             Debug="$2"
             shift 2
             ;;
+        -D)
+            Echo="$2"
+            shift 2
+            ;;
         -C)
             Cfg="$2"
             shift 2
@@ -43,8 +47,10 @@ export PYTHONPATH=`dirname $PWD`
 [ -z $Input ] && Input=0
 [ -z $Threshold ] && Threshold=3
 [ -z $Debug ] && Debug=False
+[ -z $Echo ] && Echo=False
 [ -z $Cfg ] && Cfg=config.py
 
 
 # ./posematch.py play -C config.py --debug True
-./posematch.py play -C $Cfg --debug $Debug -i $Input -t $Threshold
+./posematch.py play -C $Cfg --debug $Debug -i $Input -t $Threshold -e $Echo
+
