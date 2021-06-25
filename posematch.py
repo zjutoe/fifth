@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import click
+import datetime
 import time
 import threading
 
@@ -169,14 +170,20 @@ def compare_video_with_keyframes(video, keyframes, threshold, feedback_interval,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5) as pose:
 
-        i = 0
+        # i = 0
         i_kf = 0
         mark = np.zeros(33 * 4).reshape(33, 4)
+
+        t0 = datetime.datetime.now()
         while True:
-            i += 1
-            D('count %d before timeout %d', i, timeout)
-            if i >= int(timeout): # FIXME timeout is str?
+            t1 = datetime.datetime.now()
+            if (t1-t0).seconds >= timeout:
                 break
+            
+            # i += 1
+            # D('count %d before timeout %d', i, timeout)
+            # if i >= int(timeout): # FIXME timeout is str?
+            #     break
                 
             success, image = read_video_capture(cap, type(video) is int)
             if not success:     # error happens
