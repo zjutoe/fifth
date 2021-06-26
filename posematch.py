@@ -239,6 +239,7 @@ def play_scene(scene, echo_play = False, prev_proc_ref = None):
     video_input       = scene['video_input']
     threshold         = scene['threshold']
     timeout           = scene['timeout']
+    loop              = scene['loop']
     feedback_interval = scene['feedback_interval']
     green_channel     = scene['green_channel']
     
@@ -247,7 +248,10 @@ def play_scene(scene, echo_play = False, prev_proc_ref = None):
         mkf = load_keyframe_landmarks(kfs)
             
         # proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-autoexit']) if reference else None
-        proc_ref = subprocess.Popen(['ffplay', reference, '-fs']) if reference else None
+        if loop:
+            proc_ref = subprocess.Popen(['ffplay', reference, '-fs', '-loop', '0']) if reference else None
+        else:
+            proc_ref = subprocess.Popen(['ffplay', reference, '-fs']) if reference else None
         time.sleep(1)
         if prev_proc_ref: # the previous video should be killed after a new one starts
             I('killing last stage video')
