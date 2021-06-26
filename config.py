@@ -16,7 +16,7 @@ class Cfg(configurebase.ConfigureBase):
              'reference'   :'motions/m0/reference.MP4',
              'reference2'   :'motions/m0/reference.MP4',
              'video_input' :video_input,
-             'threshold'   :1,
+             'threshold'   :0.05,
              'timeout'     :28800, # 8 hours
              'loop'        :True,
              'feedback_interval'   :1,
@@ -28,7 +28,7 @@ class Cfg(configurebase.ConfigureBase):
              'reference'   :'motions/m1/reference.MP4',
              'reference2'  :'motions/m1/reference_again.MP4',
              'video_input' :video_input,
-             'threshold'   :2,
+             'threshold'   :3,
              'timeout': 23,
              'loop'        :False,
              'feedback_interval'   :3,

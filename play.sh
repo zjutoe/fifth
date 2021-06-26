@@ -43,6 +43,7 @@ done
 set -- "${POSITIONAL[@]}"
 
 export PYTHONPATH=`dirname $PWD`
+export PATH=~/opt/anaconda3/bin:$PATH
 
 [ -z $Input ] && Input=0
 [ -z $Threshold ] && Threshold=3
